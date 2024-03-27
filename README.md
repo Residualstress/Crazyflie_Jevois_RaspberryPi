@@ -34,4 +34,50 @@ Building and flashing are used several times during the configuration of the con
    ![image](https://github.com/Residualstress/Crazyflie_Jevois_RaspberryPi/assets/92587824/cdfe669e-0270-43c7-9034-1bfdc7f128c0)
 
 ## Pyserial configuration
-when you use `with SyncCrazyflie(URI) as scf:` to connect with Crazyflie, It will check if the list returned by `serial.tools.list_ports` contains the URI. However, on both Jevois and Raspberry pi, when you use `python3 -m serial.tools.list_ports -v` to look at the ports, pyserial filters out the `ttysS0` port. The reason is clearly stated under this [topic](https://github.com/pyserial/pyserial/issues/489). And you also could check this [discussion](https://github.com/orgs/bitcraze/discussions/1224) in Crazyflie repository which gives a complete description of the cause and solution of the error.
+When you use `with SyncCrazyflie(URI) as scf:` to connect with Crazyflie, It will check if the list returned by `serial.tools.list_ports` contains the URI. However, on both Jevois and Raspberry pi, when you use `python3 -m serial.tools.list_ports -v` to look at the ports, pyserial filters out the `ttysS0` port. The reason is clearly stated under this [topic](https://github.com/pyserial/pyserial/issues/489). And you also could check this [discussion](https://github.com/orgs/bitcraze/discussions/1224) in Crazyflie repository which gives a complete description of the cause and solution of the error.
+
+## CPX
+We use The Crazyflie Packet eXchange protocol (CPX) to enable communications between Crazyflie 2.0 and the host. Here are examples on Raspberry PI and Crazyflie 2.0. We will use this two scripts to complete the duty that Raspberry Pi send the frame number and Crazyflie will receive and print it.
+   ```
+import logging
+import struct
+import sys
+import threading
+import time
+import numpy as np
+
+import cflib.crtp
+import cflib.cpx
+from cflib.cpx.transports import UARTTransport
+from cflib.cpx import CPXFunction
+from cflib.crazyflie import Crazyflie
+from cflib.crazyflie.log import LogConfig
+from cflib.utils import uri_helper
+
+def main():
+    cflib.crtp.init_drivers(enable_serial_driver=True)
+
+    transport = UARTTransport('/dev/ttyS0', 115200)
+    cpxRaspberry = cflib.cpx.CPX(transport)
+    try:
+        packet = cflib.cpx.CPXPacket()
+        packet.destination = cflib.cpx.CPXTarget.STM32
+        packet.function = cflib.cpx.CPXFunction.APP
+
+        num_frames = 10
+
+        for frame in range(1, num_frames + 1):
+            packet.data = [frame]  
+            print("Sending Frame:", frame)
+            cpxRaspberry.sendPacket(packet)
+            time.sleep(1)  
+            #uart.readPacket()
+        print("All frames sent successfully!")
+
+    except Exception as e:
+        print("An error occurred:", str(e))
+
+
+if __name__ == "__main__":
+    main()
+   ```
