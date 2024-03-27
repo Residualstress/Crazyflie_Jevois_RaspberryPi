@@ -20,13 +20,16 @@ Building and flashing are used several times during the configuration of the con
    ```
    make menuconfig
    ```
-   In Platform configuration-> Bolt.
-3. To compile in App layer, both "make bolt_defconfig" and "make menuconfig" will faile. So you need to add parametes in app-config. For example, in [crazyflie-firmware/examples/app_hello_world/app-config](https://github.com/bitcraze/crazyflie-firmware/blob/master/examples/app_hello_world/app-config):
+   In Platform configuration-> Platform to build-> Build for Bolt.
+   ![image](https://github.com/Residualstress/Crazyflie_Jevois_RaspberryPi/assets/92587824/c101d6d3-043b-45fe-adae-166baeb29a78)
+
+4. To compile in App layer, both "make bolt_defconfig" and "make menuconfig" will faile. So you need to add parametes in app-config. For example, in [crazyflie-firmware/examples/app_hello_world/app-config](https://github.com/bitcraze/crazyflie-firmware/blob/master/examples/app_hello_world/app-config):
    ```
    CONFIG_ENABLE_CPX = y
    CONFIG_ENABLE_CPX_ON_UART2 = y
    CONFIG_CPX_UART2_BAUDRATE = 115200
-   CONFIG_DECK_FORCE = cpxOverUART2
+   CONFIG_DECK_FORCE = "cpxOverUART2"
    CONFIG_DECK_CPX_HOST_ON_UART2 = y
    ```
-   ![WhatsApp 图像2024-03-25于16 06 32_34bb0efe](https://github.com/Residualstress/Crazyflie_Jevois_RaspberryPi/assets/92587824/b13135d5-440f-4875-8977-6ae87589ac4a)
+   ![image](https://github.com/Residualstress/Crazyflie_Jevois_RaspberryPi/assets/92587824/cdfe669e-0270-43c7-9034-1bfdc7f128c0)
+
