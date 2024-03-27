@@ -1,5 +1,5 @@
 # Crazyflie_Jevois_RaspberryPi
-This repository is used to connect Crazyflie to Jevois or Raspberry Pi. The main steps run on a Raspberry Pi with an operating system similar to Jevois. However, when the steps differ from Jevois, specific instructions are given.y Pi which is similar to Jevois on OS. But the specification will be given when the steps turn to different on Jevois. 
+This repository is used to connect Crazyflie to Jevois or Raspberry Pi. The main steps run on a Raspberry Pi with an operating system similar to Jevois. And the specification will be given when the steps turn to different on Jevois. 
 
 ## Platform
 1. Crazyflie 2.0 and Crazyflie Bolt
@@ -33,3 +33,5 @@ Building and flashing are used several times during the configuration of the con
    ```
    ![image](https://github.com/Residualstress/Crazyflie_Jevois_RaspberryPi/assets/92587824/cdfe669e-0270-43c7-9034-1bfdc7f128c0)
 
+## Pyserial configuration
+when you use `with SyncCrazyflie(URI) as scf:` to connect with Crazyflie, It will check if the list returned by `serial.tools.list_ports` contains the URI. However, on both Jevois and Raspberry pi, when you use `python3 -m serial.tools.list_ports -v` to look at the ports, pyserial filters out the `ttysS0` port. The reason is clearly stated under this [topic](https://github.com/pyserial/pyserial/issues/489). And you also could check this [discussion](https://github.com/orgs/bitcraze/discussions/1224) in Crazyflie repository which gives a complete description of the cause and solution of the error.
