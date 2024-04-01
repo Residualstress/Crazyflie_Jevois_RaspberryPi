@@ -36,6 +36,9 @@ Building and flashing are used several times during the configuration of the con
 ## Pyserial configuration
 When you use `with SyncCrazyflie(URI) as scf:` to connect with Crazyflie, It will check if the list returned by `serial.tools.list_ports` contains the URI. However, on both Jevois and Raspberry pi, when you use `python3 -m serial.tools.list_ports -v` to look at the ports, pyserial filters out the `ttysS0` port. The reason is clearly stated under this [topic](https://github.com/pyserial/pyserial/issues/489). And you also could check this [discussion](https://github.com/orgs/bitcraze/discussions/1224) in Crazyflie repository which gives a complete description of the cause and solution of the error.
 
+##  Crazyflie-lib-python
+This is a [python library to communicate with Crazyflie](https://github.com/bitcraze/crazyflie-lib-python). WHen you run `SyncCrazyflie(URI) as scf:` in [this tutorial](https://www.bitcraze.io/documentation/repository/crazyflie-lib-python/master/development/uart_communication/). It will call the [self.cpx = CPX(UARTTransport(device, 576000))](https://github.com/bitcraze/crazyflie-lib-python/blob/a77b4023867c27d814c6820373ec2a7d158a2ef5/cflib/crtp/serialdriver.py#L94) with the default baudrate of 576000. This baudrate can not change automatically. So if you modify baudrated fo the UART, you should manually replace 576000 here. Otherwise, the scripy will hang at  `SyncCrazyflie(URI) as scf:` with information printed on the command line `Connecting to UART on /dev/ttyS0 @ 576000`.
+
 ## CPX
 We use The Crazyflie Packet eXchange protocol (CPX) to enable communications between Crazyflie 2.0 and the host. Here are examples on Raspberry PI and Crazyflie 2.0. We will use this two scripts to complete the duty that Raspberry Pi send the frame number and Crazyflie will receive and print it.
    ```
