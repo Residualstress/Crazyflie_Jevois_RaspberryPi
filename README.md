@@ -1,5 +1,5 @@
 # Crazyflie_Jevois_RaspberryPi
-This repository is used to connect Crazyflie to Jevois or Raspberry Pi. The main steps run on a Raspberry Pi with an operating system similar to Jevois. And the specification will be given when the steps turn to different on Jevois. 
+This repository is a few notes of caution when trying to connect Crazyflie with Jevois or Raspberry Pi. The main steps run on a Raspberry Pi with an operating system similar to Jevois. And the specification will be given when the steps turn to different on Jevois. 
 
 ## Platform
 1. Crazyflie 2.0 and Crazyflie Bolt
