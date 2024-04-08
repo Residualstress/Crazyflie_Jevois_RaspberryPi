@@ -46,7 +46,7 @@ class PythonTest:
     ## Process function with no USB output
     def processNoUSB(self, inframe):
 
-        self.SerialSend.reset_output_buffer()
+        self.SerialSend.reset_output_buffer() #The most important poin when sending data
         self.packet.data = [1]
         data = self.packet.wireData
         if len(data) > 100:
