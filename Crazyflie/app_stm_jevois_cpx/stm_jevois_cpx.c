@@ -32,5 +32,5 @@ void appMain() {
 
 static void cpxPacketCallback(const CPXPacket_t* cpxRx) {
   //DEBUG_PRINT("Oil palm location is (%u, %u)\n", cpxRx->data[0], cpxRx->data[1]);
-  DEBUG_PRINT("Oil palm location is (%u)\n", cpxRx->data[0]);
+  DEBUG_PRINT("Get number from Jevois is (%u)\n", cpxRx->data[0]);
 }
