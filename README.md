@@ -34,55 +34,13 @@ Building and flashing are used several times during the configuration of the con
    ![image](https://github.com/Residualstress/Crazyflie_Jevois_RaspberryPi/assets/92587824/cdfe669e-0270-43c7-9034-1bfdc7f128c0)
    You also can find the revised example cfg file in this repository [Crazyflie_Jevois_RaspberryPi/Crazyflie/app_stm_jevois_cpx/app-config](https://github.com/Residualstress/Crazyflie_Jevois_RaspberryPi/blob/main/Crazyflie/app_stm_jevois_cpx/app-config)
 ## Pyserial configuration
-When you use `with SyncCrazyflie(URI) as scf:` to connect with Crazyflie, It will check if the list returned by `serial.tools.list_ports` contains the URI. However, on both Jevois and Raspberry pi, when you use `python3 -m serial.tools.list_ports -v` to look at the ports, pyserial filters out the `ttysS0` port. The reason is clearly stated under this [topic](https://github.com/pyserial/pyserial/issues/489). And you also could check this [discussion](https://github.com/orgs/bitcraze/discussions/1224) in Crazyflie repository which gives a complete description of the cause and solution of the error.
+When you use `with SyncCrazyflie(URI) as scf:` to connect with Crazyflie, It will check if the list returned by `serial.tools.list_ports` contains the URI. However, on both Jevois and Raspberry pi, when you use `python3 -m serial.tools.list_ports -v` to look at the ports, pyserial filters out the `ttysS0` port. The reason is clearly stated under this [topic](https://github.com/pyserial/pyserial/issues/489). And you also could check this [discussion](https://github.com/orgs/bitcraze/discussions/1224) in Crazyflie repository which gives a complete description of the cause and solution of the error. Please remeber to reinstall Pyserial after you change its' source code.
 
 ##  Crazyflie-lib-python
-This is a [python library to communicate with Crazyflie](https://github.com/bitcraze/crazyflie-lib-python). WHen you run `SyncCrazyflie(URI) as scf:` in [this tutorial](https://www.bitcraze.io/documentation/repository/crazyflie-lib-python/master/development/uart_communication/). It will call the [self.cpx = CPX(UARTTransport(device, 576000))](https://github.com/bitcraze/crazyflie-lib-python/blob/a77b4023867c27d814c6820373ec2a7d158a2ef5/cflib/crtp/serialdriver.py#L94) with the default baudrate of 576000. This baudrate can not change automatically. So if you modify baudrated fo the UART, you should manually replace 576000 here. Otherwise, the scripy will hang at  `SyncCrazyflie(URI) as scf:` with information printed on the command line `Connecting to UART on /dev/ttyS0 @ 576000`.
+This is a [python library to communicate with Crazyflie](https://github.com/bitcraze/crazyflie-lib-python). WHen you run `SyncCrazyflie(URI) as scf:` in [this tutorial](https://www.bitcraze.io/documentation/repository/crazyflie-lib-python/master/development/uart_communication/). It will call the [self.cpx = CPX(UARTTransport(device, 576000))](https://github.com/bitcraze/crazyflie-lib-python/blob/a77b4023867c27d814c6820373ec2a7d158a2ef5/cflib/crtp/serialdriver.py#L94) with the default baudrate of 576000. This baudrate can not change automatically. So if you modify baudrated fo the UART, you should manually replace 576000 here. Otherwise, the scripy will hang at  `SyncCrazyflie(URI) as scf:` with information printed on the command line `Connecting to UART on /dev/ttyS0 @ 576000`. Please remeber to reinstall Crazyflie-lib-python after you change its' source code.
 
 ## CPX in Raspberry Pi
-We use The Crazyflie Packet eXchange protocol (CPX) to enable communications between Crazyflie 2.0 and the host. Here are examples on Raspberry PI and Crazyflie 2.0. We will use this two scripts to complete the duty that Raspberry Pi send the frame number and Crazyflie will receive and print it.
-   ```
-import logging
-import struct
-import sys
-import threading
-import time
-import numpy as np
+We use The Crazyflie Packet eXchange protocol (CPX) to enable communications between Crazyflie 2.0 and the host. Here is the example on Raspberry PI and Crazyflie 2.0. We will use this two scripts to complete the work that ]Raspberry Pi send the frame number](https://github.com/Residualstress/Crazyflie_Jevois_RaspberryPi/blob/main/Raspberry%20Pi/Pi_to_Crazyflie.py) and [Crazyflie will receive and print it](https://github.com/Residualstress/Crazyflie_Jevois_RaspberryPi/blob/main/Crazyflie/app_stm_jevois_cpx/stm_jevois_cpx.c).
 
-import cflib.crtp
-import cflib.cpx
-from cflib.cpx.transports import UARTTransport
-from cflib.cpx import CPXFunction
-from cflib.crazyflie import Crazyflie
-from cflib.crazyflie.log import LogConfig
-from cflib.utils import uri_helper
-
-def main():
-    cflib.crtp.init_drivers(enable_serial_driver=True)
-
-    transport = UARTTransport('/dev/ttyS0', 115200)
-    cpxRaspberry = cflib.cpx.CPX(transport)
-    try:
-        packet = cflib.cpx.CPXPacket()
-        packet.destination = cflib.cpx.CPXTarget.STM32
-        packet.function = cflib.cpx.CPXFunction.APP
-
-        num_frames = 10
-
-        for frame in range(1, num_frames + 1):
-            packet.data = [frame]  
-            print("Sending Frame:", frame)
-            cpxRaspberry.sendPacket(packet)
-            time.sleep(1)  
-            #uart.readPacket()
-        print("All frames sent successfully!")
-
-    except Exception as e:
-        print("An error occurred:", str(e))
-
-
-if __name__ == "__main__":
-    main()
-   ```
 ## CPX in Jevois
-The script used in Jevois to send data to Crazyflie is in [Crazyflie_Jevois_RaspberryPi/Crazyflie/app_stm_jevois_cpx/stm_jevois_cpx.c](https://github.com/Residualstress/Crazyflie_Jevois_RaspberryPi/blob/main/Crazyflie/app_stm_jevois_cpx/stm_jevois_cpx.c). Because Jevois will processNoUSB() is called on every frame, it will run something we can't see between two frames, i.e., after one frame and before later frame. I have tested many times that if we do not add [`elf.SerialSend.reset_output_buffer()`](https://github.com/Residualstress/Crazyflie_Jevois_RaspberryPi/blob/ed8307df3d564f15fc908739c47cf7a9afac05d3/JeVois/PythonTest.py#L47C10-L47C46) at the beginning of processNoUSB, the crazyflie always recieved only the first number [1] and report the UART error. It's just like Jevois write something into the buffer. But we cann't see that even if I use [`jevois.LINFO('buff is {}'.format(buff))`](https://github.com/Residualstress/Crazyflie_Jevois_RaspberryPi/blob/ed8307df3d564f15fc908739c47cf7a9afac05d3/JeVois/PythonTest.py#L60C9-L60C48) to show every buffers. The result shown that they are totaly same.
+The script used in Jevois to send data to Crazyflie is in [Crazyflie_Jevois_RaspberryPi/Crazyflie/app_stm_jevois_cpx/stm_jevois_cpx.c](https://github.com/Residualstress/Crazyflie_Jevois_RaspberryPi/blob/main/Crazyflie/app_stm_jevois_cpx/stm_jevois_cpx.c). Because Jevois will processNoUSB() is called on every frame, it will run something we can't see between two frames, i.e., after one frame and before the later frame. I have tested many times that if we do not add [`elf.SerialSend.reset_output_buffer()`](https://github.com/Residualstress/Crazyflie_Jevois_RaspberryPi/blob/ed8307df3d564f15fc908739c47cf7a9afac05d3/JeVois/PythonTest.py#L47C10-L47C46) at the beginning of processNoUSB, the crazyflie always recieved only the first number [1] and report the UART error. It's just like Jevois write something into the buffer. But we cann't see that even if I use [`jevois.LINFO('buff is {}'.format(buff))`](https://github.com/Residualstress/Crazyflie_Jevois_RaspberryPi/blob/ed8307df3d564f15fc908739c47cf7a9afac05d3/JeVois/PythonTest.py#L60C9-L60C48) to show every buffers. The result shown that they are totaly same.
