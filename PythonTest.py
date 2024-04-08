@@ -1,17 +1,15 @@
 import pyjevois
 import time
+
 if pyjevois.pro:
     import libjevoispro as jevois
 else:
     import libjevois as jevois
 
-
 import serial
 import cflib.crtp
 import cflib.cpx
-from cflib.cpx.transports import UARTTransport
-from cflib.cpx import CPXFunction
-from cflib.utils import uri_helper
+
 
 class PythonTest:
     # ###################################################################################################
@@ -20,6 +18,16 @@ class PythonTest:
         jevois.LINFO("PythonTest Constructor")
         self.frame = 0  # a simple frame counter used to demonstrate sendSerial()
         self.timer = jevois.Timer("pytest", 100, jevois.LOG_INFO)
+        cflib.crtp.init_drivers(enable_serial_driver=True)
+        self.packet = cflib.cpx.CPXPacket()
+        self.packet.destination = cflib.cpx.CPXTarget.STM32
+        self.packet.function = cflib.cpx.CPXFunction.APP
+        self.frame = 1
+        self.start = False
+        self.SerialSend = serial.Serial('/dev/ttyS0', 115200, timeout=2, write_timeout=2)
+        # if self.start == False:
+        #     self.SerialSend = serial.Serial('/dev/ttyS0', 115200, timeout=2, write_timeout=2)
+        #     self.start = True
 
     # ###################################################################################################
     ## JeVois optional extra init once the instance is fully constructed
@@ -33,42 +41,30 @@ class PythonTest:
         self.cy = jevois.Parameter(self, 'cy', 'int', "Circle vertical center, in pixels", 240, pc)
         self.radius = jevois.Parameter(self, 'radius', 'byte', "Circle radius, in pixels", 50, pc)
 
-        cflib.crtp.init_drivers(enable_serial_driver=True)
-        self.packet = cflib.cpx.CPXPacket()
-        self.packet.destination = cflib.cpx.CPXTarget.STM32
-        self.packet.function = cflib.cpx.CPXFunction.APP
-        self.frame = 1
-        self.start = False
-
-        if self.start == False:
-            self.SerialSend = serial.Serial('/dev/ttyS0', 115200, timeout=2, write_timeout=2)
-            self.start = True
 
     # ###################################################################################################
     ## Process function with no USB output
     def processNoUSB(self, inframe):
 
-            self.packet.data = [self.frame]
-            data = self.packet.wireData
-            if len(data) > 100:
-                raise 'Packet too large!'
+        self.SerialSend.reset_output_buffer()
+        self.packet.data = [1]
+        data = self.packet.wireData
+        if len(data) > 100:
+            raise 'Packet too large!'
+        buff = bytearray([0xFF, len(data)])
+        buff.extend(data)
+        checksum = 0
+        for i in buff:
+            checksum ^= i
 
-            buff = bytearray([0xFF, len(data)])
-            buff.extend(data)
+        buff.extend([checksum])
+        self.SerialSend.write(buff)
+        jevois.LINFO('ids type is {}'.format(buff))
+        jevois.LINFO('SerialSend is {}'.format(self.SerialSend))
+        self.frame += 1
 
-            checksum = 0
-            for i in buff:
-                checksum ^= i
-
-            buff.extend([checksum])
-            jevois.LINFO('ids type is {}'.format(type(buff)))
-            jevois.LINFO('ids type is {}'.format(self.SerialSend))
-            #jevois.sendSerial('{}'.format(buff))
-
-            self.SerialSend.write(buff)
-            self.frame += 1
-
-            time.sleep(3)
+        time.sleep(2)
+        self.SerialSend.reset_output_buffer()
     # ###################################################################################################
     ## Process function with USB output
     def process(self, inframe, outframe):
@@ -102,8 +98,8 @@ class PythonTest:
 
         # Send a string over serial (e.g., to an Arduino). Remember to tell the JeVois Engine to display those messages,
         # as they are turned off by default. For example: 'setpar serout All' in the JeVois console:
-        #if self.frame % 100 == 0:
-            #jevois.sendSerial("DONE frame {}".format(self.frame));
+        # if self.frame % 100 == 0:
+        # jevois.sendSerial("DONE frame {}".format(self.frame));
         self.frame += 1
 
     # ###################################################################################################
