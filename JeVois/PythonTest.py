@@ -23,11 +23,9 @@ class PythonTest:
         self.packet.destination = cflib.cpx.CPXTarget.STM32
         self.packet.function = cflib.cpx.CPXFunction.APP
         self.frame = 1
-        self.start = False
+
         self.SerialSend = serial.Serial('/dev/ttyS0', 115200, timeout=2, write_timeout=2)
-        # if self.start == False:
-        #     self.SerialSend = serial.Serial('/dev/ttyS0', 115200, timeout=2, write_timeout=2)
-        #     self.start = True
+
 
     # ###################################################################################################
     ## JeVois optional extra init once the instance is fully constructed
@@ -46,7 +44,7 @@ class PythonTest:
     ## Process function with no USB output
     def processNoUSB(self, inframe):
 
-        self.SerialSend.reset_output_buffer() #The most important poin when sending data
+        self.SerialSend.reset_output_buffer()
         self.packet.data = [1]
         data = self.packet.wireData
         if len(data) > 100:
@@ -59,7 +57,7 @@ class PythonTest:
 
         buff.extend([checksum])
         self.SerialSend.write(buff)
-        jevois.LINFO('ids type is {}'.format(buff))
+        jevois.LINFO('buff is {}'.format(buff))
         jevois.LINFO('SerialSend is {}'.format(self.SerialSend))
         self.frame += 1
 
