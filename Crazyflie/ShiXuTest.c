@@ -40,9 +40,17 @@ static void setHoverSetpoint(setpoint_t *setpoint, float vx, float vy, float z)
   setpoint->velocity_body = true;
 }
 
+static logVarId_t idX;   
+static float PositionX = 0.0f;
+
+static logVarId_t idY;  
+static float PositionY = 0.0f;
+
+static void cpxPacketCallback(const CPXPacket_t* cpxRx);
+
 static const float height_takeoff = 0.5f;
-static const float height_land = 0.2f;
-static const float distance_x = 1.0f;
+static const float height_land = 0.15f;
+static const float distance_x = 3.5f;
 static const double velMax = 0.15f;
 static Velocity velocity = {0, 0};
 
@@ -68,7 +76,7 @@ bool is_at_target(Coordinate target) {
 
     double error_x = postiion_x - target.x;
     if (fabs(error_x) <= tolerance) {
-    	DEBUG_PRINT("X position is satisfied, distance is: %.2f ...\n", error_x);
+    	//DEBUG_PRINT("X position is satisfied, distance is: %.2f ...\n", error_x);
         return true;  // Current coordinates are close enough to the target
     } else{
     
@@ -109,8 +117,8 @@ void appMain()
 {
   static setpoint_t setpoint;
   Coordinate target_Coordinate = {distance_x, 0}; 
-  
   vTaskDelay(M2T(10000));
+  
   
   paramVarId_t idPositioningDeck = paramGetVarId("deck", "bcFlow2");
 
@@ -119,6 +127,8 @@ void appMain()
 
   uint8_t positioningInit = paramGetUint(idPositioningDeck);
 
+
+  cpxRegisterAppMessageHandler(cpxPacketCallback);	
   if (positioningInit) {
       if (1) {
         DEBUG_PRINT("Waiting for the client ...\n");
@@ -156,4 +166,27 @@ void appMain()
   } else {
     DEBUG_PRINT("No flow deck installed ...\n");
   }
+}
+
+static void cpxPacketCallback(const CPXPacket_t* cpxRx)
+{
+    idX = logGetVarId("stateEstimate", "x");
+    idY = logGetVarId("stateEstimate", "y");
+    int8_t  raw_x  = (int8_t)cpxRx->data[0];
+    float   divergence = ((float)raw_x) / 100.0f;
+
+    uint8_t raw_y  = cpxRx->data[1];
+    float   obstacle = (float)raw_y;
+
+    DEBUG_PRINT("Divergence: %.2f\n", (double)divergence);
+    DEBUG_PRINT("Obstacle parameter: %.2f\n", (double)obstacle);
+
+    if(obstacle == 1.0f)
+    {
+        DEBUG_PRINT("Drone is landing normally.\n");
+        PositionX = logGetFloat(idX);
+        DEBUG_PRINT("PositionX is now: %f deg\n", (double)PositionX);
+        PositionY = logGetFloat(idY);
+        DEBUG_PRINT("PositionY is now: %f deg\n", (double)PositionY);
+    }
 }
