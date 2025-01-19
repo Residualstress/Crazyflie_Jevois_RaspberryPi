@@ -49,7 +49,7 @@ static float PositionY = 0.0f;
 
 static void cpxPacketCallback(const CPXPacket_t* cpxRx);
 
-static const float height_takeoff = 1.25f;
+static const float height_takeoff = 1.0f;
 static const float height_land = 0.15f;
 static const float distance_x = 3.6f;
 static const double velMax = 0.15f;
@@ -93,7 +93,7 @@ bool is_at_target(Coordinate target) {
         fabs(postiion_y - target.y) <= tolerance) {
         return true;  // Current coordinates are close enough to the target
     } else{ 
-        velocity.x = drone_speed(distance2_x, 0.05, 0.15, 0.1, 2);	
+        velocity.x = drone_speed(distance2_x, 0.08, 0.2, 0.1, 2);	
         velocity.y = drone_speed(distance2_y, 0.02, 0.15, 0.1, 2);
         return false;
         } 
@@ -130,7 +130,7 @@ void appMain()
       	DEBUG_PRINT("Taking off ...\n");
         vTaskDelay(M2T(10));
         int j = 0;
-        while (j < 500){
+        while (j < 1000){
         	vTaskDelay(M2T(10));
         	setHoverSetpoint(&setpoint, 0, 0, height_takeoff);
         	commanderSetSetpoint(&setpoint, 3);
@@ -180,7 +180,7 @@ static void cpxPacketCallback(const CPXPacket_t* cpxRx)
     float   divergence = ((float)raw_x) / 100.0f;
 
     uint8_t raw_y  = cpxRx->data[1];
-    obstacle = (float)raw_y;
+    float obstacle = (float)raw_y;
 
     DEBUG_PRINT("Divergence: %.2f\n", (double)divergence);
     //DEBUG_PRINT("Obstacle parameter: %.2f\n", (double)obstacle);
