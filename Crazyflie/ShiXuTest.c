@@ -49,7 +49,7 @@ static float PositionY = 0.0f;
 
 static void cpxPacketCallback(const CPXPacket_t* cpxRx);
 
-static const float height_takeoff = 0.5f;
+static const float height_takeoff = 1.25f;
 static const float height_land = 0.15f;
 static const float distance_x = 3.6f;
 static const double velMax = 0.15f;
@@ -91,11 +91,10 @@ bool is_at_target(Coordinate target) {
 	
     if (fabs(postiion_x - target.x) <= tolerance &&
         fabs(postiion_y - target.y) <= tolerance) {
-        //DEBUG_PRINT("point arrived, position is  (%.2f, %.2f)\n", (double)postiion_x, (double)postiion_y);
         return true;  // Current coordinates are close enough to the target
     } else{ 
         velocity.x = drone_speed(distance2_x, 0.05, 0.15, 0.1, 2);	
-        velocity.y = drone_speed(distance2_y, 0.05, 0.15, 0.1, 2);
+        velocity.y = drone_speed(distance2_y, 0.02, 0.15, 0.1, 2);
         return false;
         } 
 }
@@ -184,7 +183,7 @@ static void cpxPacketCallback(const CPXPacket_t* cpxRx)
     obstacle = (float)raw_y;
 
     DEBUG_PRINT("Divergence: %.2f\n", (double)divergence);
-    DEBUG_PRINT("Obstacle parameter: %.2f\n", (double)obstacle);
+    //DEBUG_PRINT("Obstacle parameter: %.2f\n", (double)obstacle);
 
     if(obstacle == 1.0f)
     {
