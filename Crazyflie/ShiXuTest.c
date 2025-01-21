@@ -49,7 +49,7 @@ static float PositionY = 0.0f;
 
 static void cpxPacketCallback(const CPXPacket_t* cpxRx);
 
-static const float height_takeoff = 1.0f;
+static const float height_takeoff = 0.8f;
 static const float height_land = 0.15f;
 static const float distance_x = 3.6f;
 static const double velMax = 0.15f;
@@ -180,7 +180,7 @@ static void cpxPacketCallback(const CPXPacket_t* cpxRx)
     float   divergence = ((float)raw_x) / 100.0f;
 
     uint8_t raw_y  = cpxRx->data[1];
-    float obstacle = (float)raw_y;
+    obstacle = (float)raw_y;
 
     DEBUG_PRINT("Divergence: %.2f\n", (double)divergence);
     //DEBUG_PRINT("Obstacle parameter: %.2f\n", (double)obstacle);
