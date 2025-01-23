@@ -17,6 +17,13 @@
 
 #define DEBUG_MODULE "TAKEOFF"
 
+float DivergenceActual = 0;
+
+LOG_GROUP_START(OpticalFLow)
+
+LOG_ADD_CORE(LOG_FLOAT, divergence, &DivergenceActual)
+
+LOG_GROUP_STOP(OpticalFLow)
 
 typedef struct {
     double x;
@@ -55,7 +62,7 @@ static const float distance_x = 3.6f;
 static const double velMax = 0.15f;
 static Velocity velocity = {0, 0};
 static float obstacle = 0;
-
+static float v = 0;
 void appMainTask(void *param)
 {
     // 执行 appMain 逻辑
@@ -78,7 +85,7 @@ double drone_speed(double distance, double v_min, double v_max, double midpoint,
     return speed;
 }
 
-bool is_at_target(Coordinate target) {
+bool is_at_target(Coordinate target, double v) {
     // Compare each coordinate component with a tolerance (e.g., 0.1)
     double tolerance = 0.05;
     logVarId_t idX = logGetVarId("stateEstimate", "x");
@@ -86,14 +93,21 @@ bool is_at_target(Coordinate target) {
     
     double postiion_x = logGetFloat(idX);
     double postiion_y = logGetFloat(idY);
-    double distance2_x =  target.x - postiion_x;
+    //double distance2_x =  target.x - postiion_x;
     double distance2_y =  target.y - postiion_y; 	
 	
     if (fabs(postiion_x - target.x) <= tolerance &&
         fabs(postiion_y - target.y) <= tolerance) {
         return true;  // Current coordinates are close enough to the target
-    } else{ 
-        velocity.x = drone_speed(distance2_x, 0.08, 0.2, 0.1, 2);	
+    } else{
+        if (v < 0.05) {
+        v = 0.05;
+        }
+        if (v > 0.2){
+        v =0.2;
+        } 
+        velocity.x = v;
+        DEBUG_PRINT("V: %.2f\n", (double)v);	
         velocity.y = drone_speed(distance2_y, 0.02, 0.15, 0.1, 2);
         return false;
         } 
@@ -109,15 +123,12 @@ static void Move_to_target(){
 void appMain()
 {
   static setpoint_t setpoint;
+  DEBUG_PRINT("Waiting for activation ...\n");
   Coordinate target_Coordinate = {distance_x, 0}; 
-  vTaskDelay(M2T(5000));
+  vTaskDelay(M2T(2000));
   
   
   paramVarId_t idPositioningDeck = paramGetVarId("deck", "bcFlow2");
-
-
-  DEBUG_PRINT("Waiting for activation ...\n");
-
   uint8_t positioningInit = paramGetUint(idPositioningDeck);
 
 
@@ -139,7 +150,7 @@ void appMain()
         
         while (1) {
 
-        	if (is_at_target(target_Coordinate)){
+        	if (is_at_target(target_Coordinate, v)){
         	   DEBUG_PRINT("End point arrived.\n");
         	   break;
         	}
@@ -184,7 +195,26 @@ static void cpxPacketCallback(const CPXPacket_t* cpxRx)
 
     DEBUG_PRINT("Divergence: %.2f\n", (double)divergence);
     //DEBUG_PRINT("Obstacle parameter: %.2f\n", (double)obstacle);
-
+    
+    if (divergence > 0.2f)
+    {
+        divergence = 0.1f;
+        DEBUG_PRINT("Adjusted Divergence (upper limit): %.2f\n", (double)divergence);
+    }
+    else if (divergence < -0.3f)
+    {
+        divergence = -0.1f;
+        DEBUG_PRINT("Adjusted Divergence (lower limit): %.2f\n", (double)divergence);
+    }
+    
+    DivergenceActual = divergence;
+    
+    float k = 2.0f;
+    float D_star = -0.1f;
+    v = k * (divergence - D_star);
+    
+    //DEBUG_PRINT("V: %.2f\n", (double)v);
+    
     if(obstacle == 1.0f)
     {
         DEBUG_PRINT("Obstacle detected.\n");
