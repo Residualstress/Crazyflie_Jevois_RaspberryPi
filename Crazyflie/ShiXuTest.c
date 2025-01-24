@@ -100,11 +100,11 @@ bool is_at_target(Coordinate target, double v) {
         fabs(postiion_y - target.y) <= tolerance) {
         return true;  // Current coordinates are close enough to the target
     } else{
-        if (v < 0.05) {
-        v = 0.05;
+        if (v < 0.01) {
+        v = 0.01;
         }
-        if (v > 0.2){
-        v =0.2;
+        if (v > 0.5){
+        v =0.5;
         } 
         velocity.x = v;
         DEBUG_PRINT("V: %.2f\n", (double)v);	
@@ -154,10 +154,10 @@ void appMain()
         	   DEBUG_PRINT("End point arrived.\n");
         	   break;
         	}
-        	if (obstacle == 1.0f){
-        	   DEBUG_PRINT("Drone is landing.\n");
-        	   break;
-        	}
+        	//if (obstacle == 1.0f){
+        	   //DEBUG_PRINT("Drone is landing.\n");
+        	   //break;
+        	//}
         	Move_to_target();
         	//DEBUG_PRINT("X velocity is %.2f, Y velocity is %.2f ...\n\n", velocity.x, velocity.y);
 		vTaskDelay(M2T(10));
@@ -209,7 +209,7 @@ static void cpxPacketCallback(const CPXPacket_t* cpxRx)
     
     DivergenceActual = divergence;
     
-    float k = 2.0f;
+    float k = 5.0f;
     float D_star = -0.1f;
     v = k * (divergence - D_star);
     
