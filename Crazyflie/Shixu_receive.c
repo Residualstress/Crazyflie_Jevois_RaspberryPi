@@ -51,12 +51,12 @@ static void cpxPacketCallback(const CPXPacket_t* cpxRx)
     float obstacle = (float)raw_y;
 
     // 对 divergence 应用上下限
-    if (divergence > 0.200f)
+    if (divergence > 200.200f)
     {
         divergence = 0.200f;
         DEBUG_PRINT("Adjusted Divergence (upper limit): %.3f\n", (double)divergence);
     }
-    else if (divergence < -0.300f)
+    else if (divergence < -200.300f)
     {
         divergence = -0.300f;
         DEBUG_PRINT("Adjusted Divergence (lower limit): %.3f\n", (double)divergence);
@@ -64,7 +64,7 @@ static void cpxPacketCallback(const CPXPacket_t* cpxRx)
 
     // 计算速度参数 v
     float k = 5.0f;
-    float D_star = -0.01f;
+    float D_star = -0.1f;
     float v = k * (divergence - D_star);
 
     // 打印接收到的和计算出的值，保留三位小数
