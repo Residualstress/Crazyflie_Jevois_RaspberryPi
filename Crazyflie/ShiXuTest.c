@@ -25,6 +25,78 @@ LOG_ADD_CORE(LOG_FLOAT, divergence, &DivergenceActual)
 
 LOG_GROUP_STOP(OpticalFLow)
 
+static const float output_limit = 30.0f;
+
+typedef struct {
+    float Kp;
+    float Ki;
+    float Kd;
+    float previous_error;
+    float integral;
+    float output_limit;
+    bool initialized;
+} PIDController;
+
+static void setPIDSetpoint(setpoint_t *setpoint, float pitch, float roll, float z)
+{
+  setpoint->mode.z = modeAbs;
+  setpoint->position.z = z;
+  
+  
+  setpoint->mode.x = modeDisable;
+  setpoint->mode.y = modeDisable;
+  
+  setpoint->mode.pitch = modeAbs;
+  setpoint->attitude.pitch = pitch;
+  
+  setpoint->mode.roll = modeAbs;
+  setpoint->attitude.roll = roll;
+
+  setpoint->velocity_body = true;
+}
+
+void PIDController_init(PIDController* pid, float Kp, float Ki, float Kd) {
+    pid->Kp = Kp;
+    pid->Ki = Ki;
+    pid->Kd = Kd;
+    pid->previous_error = 0;
+    pid->integral = 0;
+    pid->output_limit = output_limit;
+    pid->initialized = true;
+    //DEBUG_PRINT("pid parameter is initialized as (%.2f, %.2f)\n", (double)pid->previous_error, (double)pid->integral);
+}
+
+float PIDController_update(PIDController* pid, float error) {
+    // 计算积分项和微分项
+    pid->integral += error;
+    if (pid->initialized){
+    pid-> previous_error = error;
+    pid->initialized = false;
+    } 
+    float derivative = error - pid->previous_error;
+
+    // 计算控制量
+    float control_output = pid->Kp * error + pid->Ki * pid->integral + pid->Kd * derivative;
+    DEBUG_PRINT("P is %.2f, K is %.2f, D is %.2f, Output is %.2f. \n", (double)(pid->Kp * error), (double)(pid->Ki * pid->integral), (double)(pid->Kd * derivative), (double)control_output);
+    
+    if (control_output > pid->output_limit) {
+        control_output = pid->output_limit;
+    } else if (control_output < -pid->output_limit) {
+        control_output = -pid->output_limit;
+    }
+    
+    // 更新前一个误差
+    pid->previous_error = error;
+    
+    return control_output;
+}
+
+static const float Kp = 0.6;      // //1.2, 0.00001, 500
+static const float Ki = 0; //0.1 too big
+static const float Kd = 600; //0.05
+static PIDController pid_pitch;
+static PIDController pid_roll;
+
 typedef struct {
     double x;
     double y;
@@ -95,7 +167,11 @@ bool is_at_target(Coordinate target, double v) {
     double postiion_y = logGetFloat(idY);
     //double distance2_x =  target.x - postiion_x;
     double distance2_y =  target.y - postiion_y; 	
-	
+    
+    float pitch = -PIDController_update(&pid_pitch, target.x - postiion_x);
+    
+    
+    	
     if (fabs(postiion_x - target.x) <= tolerance &&
         fabs(postiion_y - target.y) <= tolerance) {
         return true;  // Current coordinates are close enough to the target
@@ -103,8 +179,8 @@ bool is_at_target(Coordinate target, double v) {
         if (v < 0.01) {
         v = 0.01;
         }
-        if (v > 0.5){
-        v =0.5;
+        if (v > 0.3){
+        v =0.3;
         } 
         velocity.x = v;
         DEBUG_PRINT("V: %.2f\n", (double)v);	
@@ -123,6 +199,10 @@ static void Move_to_target(){
 void appMain()
 {
   static setpoint_t setpoint;
+  
+  PIDController_init(&pid_pitch, Kp, Ki, Kd);
+  PIDController_init(&pid_roll, Kp, Ki, Kd);  
+  
   DEBUG_PRINT("Waiting for activation ...\n");
   Coordinate target_Coordinate = {distance_x, 0}; 
   vTaskDelay(M2T(2000));
@@ -187,21 +267,21 @@ static void cpxPacketCallback(const CPXPacket_t* cpxRx)
 {
     idX = logGetVarId("stateEstimate", "x");
     idY = logGetVarId("stateEstimate", "y");
-    int8_t  raw_x  = (int8_t)cpxRx->data[0];
-    float   divergence = ((float)raw_x) / 100.0f;
+    int16_t raw_x = (int16_t)(((uint16_t)cpxRx->data[0]) | ((uint16_t)cpxRx->data[1] << 8));
+    float   divergence = ((float)raw_x) / 1000.0f;
 
-    uint8_t raw_y  = cpxRx->data[1];
+    uint8_t raw_y  = cpxRx->data[2];
     obstacle = (float)raw_y;
 
-    DEBUG_PRINT("Divergence: %.2f\n", (double)divergence);
+    DEBUG_PRINT("Divergence: %.3f\n", (double)divergence);
     //DEBUG_PRINT("Obstacle parameter: %.2f\n", (double)obstacle);
     
-    if (divergence > 0.2f)
+    if (divergence > 200.2f)
     {
         divergence = 0.1f;
         DEBUG_PRINT("Adjusted Divergence (upper limit): %.2f\n", (double)divergence);
     }
-    else if (divergence < -0.3f)
+    else if (divergence < -200.3f)
     {
         divergence = -0.1f;
         DEBUG_PRINT("Adjusted Divergence (lower limit): %.2f\n", (double)divergence);
@@ -209,8 +289,8 @@ static void cpxPacketCallback(const CPXPacket_t* cpxRx)
     
     DivergenceActual = divergence;
     
-    float k = 5.0f;
-    float D_star = -0.1f;
+    float k = 3.0f;
+    float D_star = -0.05f;
     v = k * (divergence - D_star);
     
     //DEBUG_PRINT("V: %.2f\n", (double)v);
@@ -219,8 +299,8 @@ static void cpxPacketCallback(const CPXPacket_t* cpxRx)
     {
         DEBUG_PRINT("Obstacle detected.\n");
         PositionX = logGetFloat(idX);
-        DEBUG_PRINT("PositionX is now: %f deg\n", (double)PositionX);
+        DEBUG_PRINT("PositionX is now: %.2f deg\n", (double)PositionX);
         PositionY = logGetFloat(idY);
-        DEBUG_PRINT("PositionY is now: %f deg\n", (double)PositionY);
+        DEBUG_PRINT("PositionY is now: %.2f deg\n", (double)PositionY);
     }
 }
