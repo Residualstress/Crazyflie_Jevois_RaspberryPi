@@ -16,6 +16,14 @@ static float PositionY = 0.0f;
 
 static void cpxPacketCallback(const CPXPacket_t* cpxRx);
 
+void appMainTask(void *param)
+{
+    // 执行 appMain 逻辑
+    appMain();
+    // 挂起任务，等待重新启动
+    vTaskSuspend(NULL);
+}
+
 void appMain(void)
 {
     DEBUG_PRINT("Hello! I am the stm_gap8_cpx app\n");
@@ -34,22 +42,15 @@ void appMain(void)
 
 static void cpxPacketCallback(const CPXPacket_t* cpxRx)
 {
-    // Ensure the packet has at least 3 bytes: 2 for divergence and 1 for obstacle flag
-    if (cpxRx->length < 3) {
-        DEBUG_PRINT("Received packet with insufficient length: %d\n", cpxRx->length);
-        return;
-    }
-
-    // Combine the first two bytes into a signed 16-bit integer (little endian)
     int16_t raw_x = (int16_t)(((uint16_t)cpxRx->data[0]) | ((uint16_t)cpxRx->data[1] << 8));
-    // Scale to get the divergence with three decimal places
+    // 缩放以获得三位小数的 divergence
     float divergence = ((float)raw_x) / 1000.0f;
 
-    // Read the third byte as the obstacle flag
+    // 读取第三个字节作为 obstacle 标志
     uint8_t raw_y = cpxRx->data[2];
     float obstacle = (float)raw_y;
 
-    // Apply upper and lower limits to divergence
+    // 对 divergence 应用上下限
     if (divergence > 0.200f)
     {
         divergence = 0.200f;
@@ -61,17 +62,17 @@ static void cpxPacketCallback(const CPXPacket_t* cpxRx)
         DEBUG_PRINT("Adjusted Divergence (lower limit): %.3f\n", (double)divergence);
     }
 
-    // Calculate the velocity parameter
-    float k = 1.0f;
-    float D_star = -0.1f;
+    // 计算速度参数 v
+    float k = 5.0f;
+    float D_star = -0.01f;
     float v = k * (divergence - D_star);
 
-    // Print the received and calculated values with three decimal places
+    // 打印接收到的和计算出的值，保留三位小数
     DEBUG_PRINT("Divergence: %.3f\n", (double)divergence);
     //DEBUG_PRINT("Obstacle parameter: %.3f\n", (double)obstacle);
     DEBUG_PRINT("v: %.3f\n", (double)v);
 
-    // If an obstacle is detected, perform additional actions
+    // 如果检测到障碍物，执行额外操作
     if(obstacle == 1.0f)
     {
         DEBUG_PRINT("Drone is landing normally.\n");
