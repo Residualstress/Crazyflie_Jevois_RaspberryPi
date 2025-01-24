@@ -1228,3 +1228,4 @@ P is -0.05, K is 0.0, D is -0.43, Output is -0.48.
 P is 0.0, K is 0.0, D is 0.0, Output is 0.0. 
 P is -0.05, K is 0.0, D is -0.05, Output is -0.10. 
 Divergence: -0.023<F>
+Y pian li tai duo. guo chong ,wu fa xiu zheng
