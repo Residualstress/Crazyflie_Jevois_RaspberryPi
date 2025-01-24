@@ -1,30 +1,3 @@
-/**
- * ,---------,       ____  _ __
- * |  ,-^-,  |      / __ )(_) /_______________ _____  ___
- * | (  O  ) |     / __  / / __/ ___/ ___/ __ `/_  / / _ \
- * | / ,--´  |    / /_/ / / /_/ /__/ /  / /_/ / / /_/  __/
- *    +------`   /_____/_/\__/\___/_/   \__,_/ /___/\___/
- *
- * Crazyflie control firmware
- *
- * Copyright (C) 2019 Bitcraze AB
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, in version 3.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- *
- *
- * hello_world.c - App layer application of a simple hello world debug print every
- *   2 seconds.
- */
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -42,17 +15,6 @@ static logVarId_t idY;
 static float PositionY = 0.0f;
 
 static void cpxPacketCallback(const CPXPacket_t* cpxRx);
-
-
-
-void appMainTask(void *param)
-{
-    // 执行 appMain 逻辑
-    appMain();
-    // 挂起任务，等待重新启动
-    vTaskSuspend(NULL);
-
-  }
 
 void appMain(void)
 {
@@ -72,37 +34,50 @@ void appMain(void)
 
 static void cpxPacketCallback(const CPXPacket_t* cpxRx)
 {
-    int8_t  raw_x  = (int8_t)cpxRx->data[0];
-    float   divergence = ((float)raw_x) / 100.0f;
-
-    uint8_t raw_y  = cpxRx->data[1];
-    float   obstacle = (float)raw_y;
-
-    if (divergence > 0.2f)
-    {
-        divergence = 0.1f;
-        DEBUG_PRINT("Adjusted Divergence (upper limit): %.2f\n", (double)divergence);
-    }
-    else if (divergence < -0.3f)
-    {
-        divergence = -0.1f;
-        DEBUG_PRINT("Adjusted Divergence (lower limit): %.2f\n", (double)divergence);
+    // Ensure the packet has at least 3 bytes: 2 for divergence and 1 for obstacle flag
+    if (cpxRx->length < 3) {
+        DEBUG_PRINT("Received packet with insufficient length: %d\n", cpxRx->length);
+        return;
     }
 
+    // Combine the first two bytes into a signed 16-bit integer (little endian)
+    int16_t raw_x = (int16_t)(((uint16_t)cpxRx->data[0]) | ((uint16_t)cpxRx->data[1] << 8));
+    // Scale to get the divergence with three decimal places
+    float divergence = ((float)raw_x) / 1000.0f;
+
+    // Read the third byte as the obstacle flag
+    uint8_t raw_y = cpxRx->data[2];
+    float obstacle = (float)raw_y;
+
+    // Apply upper and lower limits to divergence
+    if (divergence > 0.200f)
+    {
+        divergence = 0.200f;
+        DEBUG_PRINT("Adjusted Divergence (upper limit): %.3f\n", (double)divergence);
+    }
+    else if (divergence < -0.300f)
+    {
+        divergence = -0.300f;
+        DEBUG_PRINT("Adjusted Divergence (lower limit): %.3f\n", (double)divergence);
+    }
+
+    // Calculate the velocity parameter
     float k = 1.0f;
     float D_star = -0.1f;
     float v = k * (divergence - D_star);
 
-    DEBUG_PRINT("Divergence: %.2f\n", (double)divergence);
-    //DEBUG_PRINT("Obstacle parameter: %.2f\n", (double)obstacle);
-    DEBUG_PRINT("v: %.2f\n", (double)v);
+    // Print the received and calculated values with three decimal places
+    DEBUG_PRINT("Divergence: %.3f\n", (double)divergence);
+    //DEBUG_PRINT("Obstacle parameter: %.3f\n", (double)obstacle);
+    DEBUG_PRINT("v: %.3f\n", (double)v);
 
+    // If an obstacle is detected, perform additional actions
     if(obstacle == 1.0f)
     {
         DEBUG_PRINT("Drone is landing normally.\n");
         PositionX = logGetFloat(idX);
-        DEBUG_PRINT("PositionX is now: %f deg\n", (double)PositionX);
+        DEBUG_PRINT("PositionX is now: %.3f deg\n", (double)PositionX);
         PositionY = logGetFloat(idY);
-        DEBUG_PRINT("PositionY is now: %f deg\n", (double)PositionY);
+        DEBUG_PRINT("PositionY is now: %.3f deg\n", (double)PositionY);
     }
 }
