@@ -77,7 +77,7 @@ float PIDController_update(PIDController* pid, float error) {
 
     // 计算控制量
     float control_output = pid->Kp * error + pid->Ki * pid->integral + pid->Kd * derivative;
-    DEBUG_PRINT("P is %.2f, K is %.2f, D is %.2f, Output is %.2f. \n", (double)(pid->Kp * error), (double)(pid->Ki * pid->integral), (double)(pid->Kd * derivative), (double)control_output);
+    //DEBUG_PRINT("P is %.2f, K is %.2f, D is %.2f, Output is %.2f. \n", (double)(pid->Kp * error), (double)(pid->Ki * pid->integral), (double)(pid->Kd * derivative), (double)control_output);
     
     if (control_output > pid->output_limit) {
         control_output = pid->output_limit;
@@ -107,18 +107,33 @@ typedef struct {
     double y;
 } Velocity;
 
-static void setHoverSetpoint(setpoint_t *setpoint, float vx, float vy, float z)
+static void setPIDSetpoint(setpoint_t *setpoint, float pitch, float roll, float z) __attribute__((unused));
+static void setHoverSetpoint(setpoint_t *setpoint, float vx, float y, float z)
 {
   setpoint->mode.z = modeAbs;
   setpoint->position.z = z;
-  
+  setpoint->mode.y = modeAbs;
+  setpoint->position.y = y;
+    
   setpoint->mode.x = modeVelocity;
-  setpoint->mode.y = modeVelocity;
   setpoint->velocity.x = vx;
-  setpoint->velocity.y = vy;
   
   setpoint->velocity_body = true;
 }
+
+static void setPositionSetpoint(setpoint_t *setpoint2, float x, float y, float z)
+{
+  setpoint2->mode.z = modeAbs;
+  setpoint2->position.z = z;
+  setpoint2->mode.y = modeAbs;
+  setpoint2->position.y = y;
+  setpoint2->mode.x = modeAbs;
+  setpoint2->position.y = x;    
+
+  
+  setpoint2->velocity_body = true;
+}
+
 
 static logVarId_t idX;   
 static float PositionX = 0.0f;
@@ -130,7 +145,7 @@ static void cpxPacketCallback(const CPXPacket_t* cpxRx);
 
 static const float height_takeoff = 0.8f;
 static const float height_land = 0.15f;
-static const float distance_x = 3.6f;
+static const float distance_x = 3.4f;
 static const double velMax = 0.15f;
 static Velocity velocity = {0, 0};
 static float obstacle = 0;
@@ -162,28 +177,30 @@ bool is_at_target(Coordinate target, double v) {
     double tolerance = 0.05;
     logVarId_t idX = logGetVarId("stateEstimate", "x");
     logVarId_t idY = logGetVarId("stateEstimate", "y");
+    logVarId_t idVx = logGetVarId("stateEstimate", "vx");
     
     double postiion_x = logGetFloat(idX);
     double postiion_y = logGetFloat(idY);
+    double velocity_x = logGetFloat(idVx);
     //double distance2_x =  target.x - postiion_x;
     double distance2_y =  target.y - postiion_y; 	
     
     float pitch = -PIDController_update(&pid_pitch, target.x - postiion_x);
-    
+    pitch = 0;
     
     	
-    if (fabs(postiion_x - target.x) <= tolerance &&
-        fabs(postiion_y - target.y) <= tolerance) {
+    if (fabs(postiion_x - target.x) <= tolerance) {
         return true;  // Current coordinates are close enough to the target
     } else{
-        if (v < 0.01) {
-        v = 0.01;
+        velocity.x = v + velocity_x;
+        if (velocity.x < 0.01) {
+        velocity.x = 0.01;
         }
-        if (v > 0.3){
-        v =0.3;
-        } 
-        velocity.x = v;
-        DEBUG_PRINT("V: %.2f\n", (double)v);	
+        if (velocity.x > 0.5){
+        velocity.x =0.5;
+        }         
+        //velocity.x = 0.2;
+        DEBUG_PRINT("V: %.2f\n", (double)velocity.x);	
         velocity.y = drone_speed(distance2_y, 0.02, 0.15, 0.1, 2);
         return false;
         } 
@@ -192,13 +209,14 @@ bool is_at_target(Coordinate target, double v) {
 
 static void Move_to_target(){
 	static setpoint_t setpoint;
-	setHoverSetpoint(&setpoint, velocity.x, velocity.y, height_takeoff);
+	setHoverSetpoint(&setpoint, velocity.x, 0, height_takeoff);
         commanderSetSetpoint(&setpoint, 3);
 }
 
 void appMain()
 {
   static setpoint_t setpoint;
+  static setpoint_t setpoint2;
   
   PIDController_init(&pid_pitch, Kp, Ki, Kd);
   PIDController_init(&pid_roll, Kp, Ki, Kd);  
@@ -223,8 +241,8 @@ void appMain()
         int j = 0;
         while (j < 1000){
         	vTaskDelay(M2T(10));
-        	setHoverSetpoint(&setpoint, 0, 0, height_takeoff);
-        	commanderSetSetpoint(&setpoint, 3);
+        	setPositionSetpoint(&setpoint2, 0, 0, height_takeoff);
+        	commanderSetSetpoint(&setpoint2, 3);
         	j++;    
         }       
         
@@ -234,10 +252,10 @@ void appMain()
         	   DEBUG_PRINT("End point arrived.\n");
         	   break;
         	}
-        	//if (obstacle == 1.0f){
-        	   //DEBUG_PRINT("Drone is landing.\n");
-        	   //break;
-        	//}
+        	if (obstacle == 1.0f){
+        	   DEBUG_PRINT("Drone is landing.\n");
+        	   break;
+        	}
         	Move_to_target();
         	//DEBUG_PRINT("X velocity is %.2f, Y velocity is %.2f ...\n\n", velocity.x, velocity.y);
 		vTaskDelay(M2T(10));
@@ -289,8 +307,8 @@ static void cpxPacketCallback(const CPXPacket_t* cpxRx)
     
     DivergenceActual = divergence;
     
-    float k = 3.0f;
-    float D_star = -0.05f;
+    float k = 0.8f;
+    float D_star = -0.2f;
     v = k * (divergence - D_star);
     
     //DEBUG_PRINT("V: %.2f\n", (double)v);
@@ -299,8 +317,8 @@ static void cpxPacketCallback(const CPXPacket_t* cpxRx)
     {
         DEBUG_PRINT("Obstacle detected.\n");
         PositionX = logGetFloat(idX);
-        DEBUG_PRINT("PositionX is now: %.2f deg\n", (double)PositionX);
+        DEBUG_PRINT("PositionX is now: %.2f m\n", (double)PositionX);
         PositionY = logGetFloat(idY);
-        DEBUG_PRINT("PositionY is now: %.2f deg\n", (double)PositionY);
+        //DEBUG_PRINT("PositionY is now: %.2f deg\n", (double)PositionY);
     }
 }
