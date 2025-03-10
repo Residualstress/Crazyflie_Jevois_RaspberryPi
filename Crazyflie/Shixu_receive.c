@@ -42,13 +42,21 @@ void appMain(void)
 
 static void cpxPacketCallback(const CPXPacket_t* cpxRx)
 {
+    // 解析前两字节获得 divergence
     int16_t raw_x = (int16_t)(((uint16_t)cpxRx->data[0]) | ((uint16_t)cpxRx->data[1] << 8));
-    // 缩放以获得三位小数的 divergence
     float divergence = ((float)raw_x) / 1000.0f;
 
     // 读取第三个字节作为 obstacle 标志
     uint8_t raw_y = cpxRx->data[2];
     float obstacle = (float)raw_y;
+
+    // 解析第4-5字节获得 chi-square 值，保留两位小数
+    int16_t raw_chi = (int16_t)(((uint16_t)cpxRx->data[3]) | ((uint16_t)cpxRx->data[4] << 8));
+    float chi_square = ((float)raw_chi) / 100.0f;
+
+    // 解析第6-7字节获得 delta 值，保留两位小数
+    int16_t raw_delta = (int16_t)(((uint16_t)cpxRx->data[5]) | ((uint16_t)cpxRx->data[6] << 8));
+    float delta = ((float)raw_delta) / 100.0f;
 
     // 对 divergence 应用上下限
     if (divergence > 200.200f)
@@ -67,13 +75,14 @@ static void cpxPacketCallback(const CPXPacket_t* cpxRx)
     float D_star = -0.1f;
     float v = k * (divergence - D_star);
 
-    // 打印接收到的和计算出的值，保留三位小数
+    // 打印接收到的数据和计算的结果
     DEBUG_PRINT("Divergence: %.3f\n", (double)divergence);
-    //DEBUG_PRINT("Obstacle parameter: %.3f\n", (double)obstacle);
+    DEBUG_PRINT("Chi-Square: %.2f\n", (double)chi_square);
+    DEBUG_PRINT("Delta: %.2f\n", (double)delta);
     DEBUG_PRINT("v: %.3f\n", (double)v);
 
     // 如果检测到障碍物，执行额外操作
-    if(obstacle == 1.0f)
+    if (obstacle == 1.0f)
     {
         DEBUG_PRINT("Drone is landing normally.\n");
         PositionX = logGetFloat(idX);
