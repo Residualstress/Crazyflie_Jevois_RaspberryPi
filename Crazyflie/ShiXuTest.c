@@ -307,8 +307,8 @@ static void cpxPacketCallback(const CPXPacket_t* cpxRx)
     
     DivergenceActual = divergence;
     
-    float k = 0.8f;
-    float D_star = -0.2f;
+    float k = 1.0f;
+    float D_star = -0.3f;
     v = k * (divergence - D_star);
     
     //DEBUG_PRINT("V: %.2f\n", (double)v);
